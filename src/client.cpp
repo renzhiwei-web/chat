@@ -49,9 +49,16 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+    // 首先将名字发送给服务端
+    cout << "input your name\n";
+    string name;
+    cin >> name;
+    send(sockfd,name.data(),name.size(),0);
+
+
     // 第3步：与服务端通讯，客户发送一个请求报文后等待服务端的回复，收到回复后，再发下一个请求报文。
     string buffer;
-    for (int ii = 0; ii < 10; ii++) // 循环3次，将与服务端进行三次通讯。
+    while(true)
     {
         int iret;
         std::cout << "input message\n";
@@ -63,7 +70,6 @@ int main(int argc, char *argv[])
             break;
         }
         cout << "发送：" << buffer << endl;
-
     }
 
     // 第4步：关闭socket，释放资源。

@@ -13,7 +13,7 @@ using namespace std;
 
 
 
-void receive(int clientfd,const sockaddr_in& caddr){
+void receive(int clientfd,const sockaddr_in& caddr,const string& name){
     string clientip = inet_ntoa(caddr.sin_addr);
     cout << clientfd << "\t";
     cout << "ip address: " << clientip << " has connected\n";
@@ -37,7 +37,7 @@ void receive(int clientfd,const sockaddr_in& caddr){
             cout << "ip address: " << clientip << " has disconnected\n";
             break;
         }else{
-            cout << "接收：" << buffer << endl;
+            cout << "[" << name << "]: "  << buffer << endl;
         }
     }
 
@@ -102,7 +102,13 @@ int main(int argc, char *argv[])
             return -1;
         }
 
-        thread t1(receive,clientfd,ref(caddr));
+        string name;
+        name.clear();
+        name.resize(1024);
+        int readn = recv(clientfd,&name[0],1024,0);
+        name.resize(readn);
+        cout << name << endl;
+        thread t1(receive,clientfd,ref(caddr),name);
         threads.push_back(move(t1));
         
     }
