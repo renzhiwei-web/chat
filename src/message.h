@@ -11,5 +11,12 @@ struct Message{
     char dest[64];
 };
 
+// 定义文件信息的结构体。
+struct st_fileinfo
+{
+    char filename[256]; // 文件名。
+    int filesize;       // 文件大小。
+};
+
 extern const std::string quit = "quit";
 extern const std::string all = "all";
