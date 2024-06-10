@@ -120,7 +120,16 @@ int main(int argc, char *argv[])
             break;
         }
         case 2:
-            // TODO group chat
+            message.message_flag = 1;
+            strcpy(message.source,name.data());
+            std::cout << "current online friends\n";
+            for(int i = 0;i < clientnames.size();i++){
+                cout << clientnames[i] << endl;
+            }
+            strcpy(message.dest,all.data());
+            std::cout << "input message\n";
+            cin >> message.content;
+            send(sockfd,&message,sizeof(message),0);
             break;
         case 3:
             // TODO file
@@ -162,6 +171,7 @@ void receive(int socketfd){
             {
                 clientnames.push_back(data);
             }
+            cout << "friends online or offline\n";
             for(auto it = clientnames.begin();it != clientnames.end();it++){
                 cout << *it << "\n";
             }

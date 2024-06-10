@@ -1,4 +1,4 @@
-
+#include <cstring>
 // 消息体
 struct Message{
     // 消息类型:0->系统消息,1->用户消息
@@ -10,3 +10,6 @@ struct Message{
     // 接收者,若为系统消息,则为空,若为群聊消息,则为all
     char dest[64];
 };
+
+extern const std::string quit = "quit";
+extern const std::string all = "all";

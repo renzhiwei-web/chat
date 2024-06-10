@@ -128,7 +128,7 @@ void receive(int clientfd,const sockaddr_in& caddr,const string& name){
         // 系统消息
         if (message.message_flag == 0)
         {
-            if (message.content == "quit")
+            if (message.content == quit)
             {
                 auto map_pos = clientlist.find(name);
                 clientlist.erase(map_pos);
@@ -146,12 +146,12 @@ void receive(int clientfd,const sockaddr_in& caddr,const string& name){
             }
         }else{ // 用户消息
             // 群聊消息
-            if (message.dest == "all")
+            if (message.dest == all)
             {
                 // 在服务器中显示群聊消息
                 cout << "[" << name << "]: "  << message.content << endl;
-                // 将消息群发
-                for(int i = 0;i < clientnames.size();i++){
+                // 将消息群发,但不能将消息转发给发送者
+                for(int i = 0;i < clientnames.size() && clientnames[i] != message.source;i++){
                     send(clientlist[clientnames[i]],&message,sizeof(message),0);
                 }
             }
