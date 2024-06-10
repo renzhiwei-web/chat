@@ -125,7 +125,7 @@ void receive(int clientfd,const sockaddr_in& caddr,const string& name){
             cout << "iret=" << iret << endl;
             break;
         }
-
+        // 系统消息
         if (message.message_flag == 0)
         {
             if (message.content == "quit")
@@ -144,8 +144,22 @@ void receive(int clientfd,const sockaddr_in& caddr,const string& name){
                 cout << "ip address: " << clientip << " name: " << name << " has disconnected\n";
                 break;
             }
-        }else{
-            cout << "[" << name << "]: "  << message.content << endl;
+        }else{ // 用户消息
+            // 群聊消息
+            if (message.dest == "all")
+            {
+                // 在服务器中显示群聊消息
+                cout << "[" << name << "]: "  << message.content << endl;
+                // 将消息群发
+                for(int i = 0;i < clientnames.size();i++){
+                    send(clientlist[clientnames[i]],&message,sizeof(message),0);
+                }
+            }
+            else{
+                // 私人消息
+                send(clientlist[message.dest],&message,sizeof(message),0);
+            }
+            
         }
     }
 

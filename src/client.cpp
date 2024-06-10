@@ -63,8 +63,9 @@ int main(int argc, char *argv[])
     Message message = {0};
     message.message_flag = 0;
     cout << "input your name\n";
-    cin >> message.content;
-    
+    string name;
+    cin >> name;
+    strcpy(message.content,name.data());
     send(sockfd,&message,sizeof(message),0);
     //  实现客户端之间的相互感知
     message = {0};
@@ -85,21 +86,51 @@ int main(int argc, char *argv[])
 
 
     // 第3步：与服务端通讯，客户发送一个请求报文后等待服务端的回复，收到回复后，再发下一个请求报文。
-    // TODO: 实现客户端之间的群聊
+    // TODO: 实现客户端之间的通讯
     while(true)
     {
         int iret;
         message = {0};
-        std::cout << "input message\n";
-        cin >> message.content;
-        message.message_flag = 1;
-        // 向服务端发送请求报文。
-        if ((iret = send(sockfd, &message, sizeof(message), 0)) <= 0)
+        // TODO: 文件发送功能
+        std::cout << "plz to choose function\n" 
+                  << "1:direct message\t" << "2:group chat" << "3:file\t" << "4:quit\n";
+        unsigned short flag;
+        cin >> flag;
+        if (std::cin.fail())
         {
-            perror("send");
+            std::cout << "plz input correct option\n";
+            std::cin.clear();
+            std::cin.ignore();
+            continue;
+        }
+        switch (flag)
+        {
+        case 1:{
+            message.message_flag = 1;
+            strcpy(message.source,name.data());
+            std::cout << "current online friends\n";
+            for(int i = 0;i < clientnames.size();i++){
+                cout << clientnames[i] << endl;
+            }
+            std::cout << "input name whose you want to chat\n";
+            cin >> message.dest;
+            std::cout << "input message\n";
+            cin >> message.content;
+            send(sockfd,&message,sizeof(message),0);
             break;
         }
-        cout << "发送：" << message.content << endl;
+        case 2:
+            // TODO group chat
+            break;
+        case 3:
+            // TODO file
+            break;
+        case 4:
+            // TODO quit
+            break;
+        default:
+            break;
+        }
     }
     if (t1.joinable())
     {
@@ -135,7 +166,7 @@ void receive(int socketfd){
                 cout << *it << "\n";
             }
         }else{ // 用户消息，则直接进行显示
-            cout << message.content << endl;
+            cout << "[" << message.source << "]:" << message.content << endl;
         }
     }
 }
