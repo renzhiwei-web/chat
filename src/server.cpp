@@ -9,41 +9,20 @@
 #include <arpa/inet.h>
 #include <thread>
 #include <vector>
+#include <unordered_map>
+#include <sstream>
+#include <iterator>
+
 using namespace std;
 
+// TODO: 维护一个客户端列表
+unordered_map<string,int> clientlist;
+vector<string> clientnames;
 
+void receive(int clientfd,const sockaddr_in& caddr,const string& name);
 
-void receive(int clientfd,const sockaddr_in& caddr,const string& name){
-    string clientip = inet_ntoa(caddr.sin_addr);
-    cout << clientfd << "\t";
-    cout << "ip address: " << clientip << " has connected\n";
-    //TODO:多线程处理多个客户端连接
-    // 第5步：与客户端通信，接收客户端发过来的报文后，回复ok。
-    string buffer;
-    while (true)
-    {
-        int iret;
-        buffer.clear();
-        buffer.resize(1024);
-        // 接收客户端的请求报文，如果客户端没有发送请求报文，recv()函数将阻塞等待。
-        // 如果客户端已断开连接，recv()函数将返回0。
-        if ((iret = recv(clientfd, &buffer[0], 1024, 0)) <= 0)
-        {
-            cout << "iret=" << iret << endl;
-            break;
-        }
-        if (buffer == "quit")
-        {
-            cout << "ip address: " << clientip << " has disconnected\n";
-            break;
-        }else{
-            cout << "[" << name << "]: "  << buffer << endl;
-        }
-    }
-
-    // 第6步：关闭socket，释放资源。
-    close(clientfd); // 关闭客户端连上来的socket。
-}
+// 通知所有的客户端
+void notify_allclients();
 
 int main(int argc, char *argv[])
 {
@@ -88,6 +67,8 @@ int main(int argc, char *argv[])
 
     vector<thread> threads;
 
+
+
     while(true){
 
         // 第4步：受理客户端的连接请求，如果没有客户端连上来，accept()函数将阻塞等待。
@@ -107,10 +88,14 @@ int main(int argc, char *argv[])
         name.resize(1024);
         int readn = recv(clientfd,&name[0],1024,0);
         name.resize(readn);
-        cout << name << endl;
         thread t1(receive,clientfd,ref(caddr),name);
         threads.push_back(move(t1));
-        
+        // 加入客户端列表
+        clientnames.push_back(name);
+        clientlist[name] = clientfd;
+        // 遍历所有的客户端
+        notify_allclients();
+
     }
     
     for(int i = 0;i < threads.size();i++){
@@ -121,4 +106,58 @@ int main(int argc, char *argv[])
         
     }
     close(listenfd); // 关闭服务端用于监听的socket。
+}
+
+void receive(int clientfd,const sockaddr_in& caddr,const string& name){
+    string clientip = inet_ntoa(caddr.sin_addr);
+    cout << clientfd << "\t";
+    cout << "ip address: " << clientip << " name: " << name << " has connected\n";
+    // 第5步：与客户端通信，接收客户端发过来的报文后，回复ok。
+    string buffer;
+    while (true)
+    {
+        int iret;
+        buffer.clear();
+        buffer.resize(1024);
+        // 接收客户端的请求报文，如果客户端没有发送请求报文，recv()函数将阻塞等待。
+        // 如果客户端已断开连接，recv()函数将返回0。
+        if ((iret = recv(clientfd, &buffer[0], 1024, 0)) <= 0)
+        {
+            cout << "iret=" << iret << endl;
+            break;
+        }
+        buffer.resize(iret);
+        if (buffer == "quit")
+        {
+            auto map_pos = clientlist.find(name);
+            clientlist.erase(map_pos);
+            auto vector_pos = clientnames.begin();
+            for(;vector_pos != clientnames.end();vector_pos++){
+                if (*vector_pos == name)
+                {
+                    break;
+                }
+            }
+            clientnames.erase(vector_pos);
+            notify_allclients();
+            cout << "ip address: " << clientip << " name: " << name << " has disconnected\n";
+            break;
+        }else{
+            cout << "[" << name << "]: "  << buffer << endl;
+        }
+    }
+
+    // 第6步：关闭socket，释放资源。
+    close(clientfd); // 关闭客户端连上来的socket。
+}
+
+// 通知所有的客户端
+void notify_allclients(){
+    // 需要现将vector数组序列化，再进行传输
+    ostringstream oss;
+    copy(clientnames.begin(),clientnames.end(),ostream_iterator<string>(oss," "));
+    string data = oss.str();
+    for(auto it = clientlist.begin();it != clientlist.end();it++){
+        send(it->second,data.data(),data.length(),0);
+    }
 }

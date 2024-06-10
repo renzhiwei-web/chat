@@ -7,7 +7,16 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <vector>
+#include <sstream>
+#include <thread>
 using namespace std;
+
+// TODO 实现客户端之间的相互感知
+vector<string> clientnames;
+
+// 多线程接收服务端的消息
+void receive(int socketfd);
 
 int main(int argc, char *argv[])
 {
@@ -54,6 +63,23 @@ int main(int argc, char *argv[])
     string name;
     cin >> name;
     send(sockfd,name.data(),name.size(),0);
+    // TODO 实现客户端之间的相互感知
+    string bu;
+    bu.clear();
+    bu.resize(1024);
+    recv(sockfd,&bu[0],1024,0);
+    istringstream iss(bu);
+    string data;
+    while (iss >> data)
+    {
+        clientnames.push_back(data);
+    }
+    for(auto it = clientnames.begin();it != clientnames.end();it++){
+        cout << *it << "\n";
+    }
+    // 客户端连接之后，服务器端将所维护的客户端列表发送给每一个客户端
+    thread t1(receive,sockfd);
+    // 客户端断链之后，服务器端同样将客户端列表发送给每一个客户端
 
 
     // 第3步：与服务端通讯，客户发送一个请求报文后等待服务端的回复，收到回复后，再发下一个请求报文。
@@ -71,7 +97,37 @@ int main(int argc, char *argv[])
         }
         cout << "发送：" << buffer << endl;
     }
-
+    if (t1.joinable())
+    {
+        t1.join();
+    }
+    
     // 第4步：关闭socket，释放资源。
     close(sockfd);
+}
+
+void receive(int socketfd){
+    string buffer;
+    while (true)
+    {
+        int iret;
+        buffer.clear();
+        buffer.resize(1024);
+        // 接收客户端的请求报文，如果客户端没有发送请求报文，recv()函数将阻塞等待。
+        // 如果客户端已断开连接，recv()函数将返回0。
+        if ((iret = recv(socketfd, &buffer[0], 1024, 0)) <= 0)
+        {
+            cout << "iret=" << iret << endl;
+            break;
+        }
+        istringstream iss(buffer);
+        string data;
+        while (iss >> data)
+        {
+            clientnames.push_back(data);
+        }
+        for(auto it = clientnames.begin();it != clientnames.end();it++){
+            cout << *it << "\n";
+        }
+    }
 }
