@@ -10,9 +10,10 @@
 #include <vector>
 #include <sstream>
 #include <thread>
+#include "message.h"
 using namespace std;
 
-// TODO 实现客户端之间的相互感知
+// 实现客户端之间的相互感知
 vector<string> clientnames;
 
 // 多线程接收服务端的消息
@@ -59,16 +60,17 @@ int main(int argc, char *argv[])
     }
 
     // 首先将名字发送给服务端
+    Message message = {0};
+    message.message_flag = 0;
     cout << "input your name\n";
-    string name;
-    cin >> name;
-    send(sockfd,name.data(),name.size(),0);
-    // TODO 实现客户端之间的相互感知
-    string bu;
-    bu.clear();
-    bu.resize(1024);
-    recv(sockfd,&bu[0],1024,0);
-    istringstream iss(bu);
+    cin >> message.content;
+    
+    send(sockfd,&message,sizeof(message),0);
+    //  实现客户端之间的相互感知
+    message = {0};
+   
+    recv(sockfd,&message,sizeof(message),0);
+    istringstream iss(message.content);
     string data;
     while (iss >> data)
     {
@@ -83,19 +85,21 @@ int main(int argc, char *argv[])
 
 
     // 第3步：与服务端通讯，客户发送一个请求报文后等待服务端的回复，收到回复后，再发下一个请求报文。
-    string buffer;
+    // TODO: 实现客户端之间的群聊
     while(true)
     {
         int iret;
+        message = {0};
         std::cout << "input message\n";
-        cin >> buffer;
+        cin >> message.content;
+        message.message_flag = 1;
         // 向服务端发送请求报文。
-        if ((iret = send(sockfd, buffer.data(), buffer.size(), 0)) <= 0)
+        if ((iret = send(sockfd, &message, sizeof(message), 0)) <= 0)
         {
             perror("send");
             break;
         }
-        cout << "发送：" << buffer << endl;
+        cout << "发送：" << message.content << endl;
     }
     if (t1.joinable())
     {
@@ -107,27 +111,31 @@ int main(int argc, char *argv[])
 }
 
 void receive(int socketfd){
-    string buffer;
+    Message message;
     while (true)
     {
         int iret;
-        buffer.clear();
-        buffer.resize(1024);
+        message = {0};
         // 接收客户端的请求报文，如果客户端没有发送请求报文，recv()函数将阻塞等待。
         // 如果客户端已断开连接，recv()函数将返回0。
-        if ((iret = recv(socketfd, &buffer[0], 1024, 0)) <= 0)
+        if ((iret = recv(socketfd, &message, sizeof(message), 0)) <= 0)
         {
             cout << "iret=" << iret << endl;
             break;
         }
-        istringstream iss(buffer);
-        string data;
-        while (iss >> data)
-        {
-            clientnames.push_back(data);
-        }
-        for(auto it = clientnames.begin();it != clientnames.end();it++){
-            cout << *it << "\n";
+        // 如果是系统消息，则进行专门处理
+        if (message.message_flag == 0){
+            istringstream iss(message.content);
+            string data;
+            while (iss >> data)
+            {
+                clientnames.push_back(data);
+            }
+            for(auto it = clientnames.begin();it != clientnames.end();it++){
+                cout << *it << "\n";
+            }
+        }else{ // 用户消息，则直接进行显示
+            cout << message.content << endl;
         }
     }
 }
