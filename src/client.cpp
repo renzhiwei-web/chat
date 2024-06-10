@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
         message = {0};
         // TODO: 文件发送功能
         std::cout << "plz to choose function\n" 
-                  << "1:direct message\t" << "2:group chat" << "3:file\t" << "4:quit\n";
+                  << "1:direct message\t" << "2:group chat\t" << "3:file\t" << "4:quit\n";
         unsigned short flag;
         cin >> flag;
         if (std::cin.fail())
@@ -135,12 +135,16 @@ int main(int argc, char *argv[])
             // TODO file
             break;
         case 4:
-            // TODO quit
-            break;
+            message.message_flag = 0;
+            strcpy(message.content,quit.data());
+            send(sockfd,&message,sizeof(message),0);
+            cout << name << "has quit\n";
+            goto here;
         default:
             break;
         }
     }
+    here:
     if (t1.joinable())
     {
         t1.join();
@@ -165,6 +169,10 @@ void receive(int socketfd){
         }
         // 如果是系统消息，则进行专门处理
         if (message.message_flag == 0){
+            if(message.content == quit){
+                return;
+            }
+            clientnames.clear();
             istringstream iss(message.content);
             string data;
             while (iss >> data)

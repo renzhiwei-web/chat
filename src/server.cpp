@@ -128,8 +128,11 @@ void receive(int clientfd,const sockaddr_in& caddr,const string& name){
         // 系统消息
         if (message.message_flag == 0)
         {
+            // 客户端退出
             if (message.content == quit)
             {
+                // 回传消息给客户端，告知客户端可以退出
+                send(clientfd,&message,sizeof(message),0);
                 auto map_pos = clientlist.find(name);
                 clientlist.erase(map_pos);
                 auto vector_pos = clientnames.begin();
