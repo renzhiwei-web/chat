@@ -13,6 +13,7 @@
 #include <sstream>
 #include <iterator>
 #include "message.h"
+#include <fstream>
 
 using namespace std;
 
@@ -147,7 +148,7 @@ void receive(int clientfd,const sockaddr_in& caddr,const string& name){
                 cout << "ip address: " << clientip << " name: " << name << " has disconnected\n";
                 break;
             }
-        }else{ // 用户消息
+        }else if(message.message_flag == 1){ // 用户消息
             // 群聊消息
             if (message.dest == all)
             {
@@ -164,6 +165,27 @@ void receive(int clientfd,const sockaddr_in& caddr,const string& name){
             }
             
         }
+        // TODO:文件消息,如何使用异步非阻塞的方式呢？
+        else{
+            istringstream iss(message.content);
+            st_fileinfo fileinfo;
+            int n = 0;
+            iss >> fileinfo.filename >> fileinfo.filesize >> n;
+            // 转发文件信息
+            send(clientlist[message.dest],&message,sizeof(message),0);
+            
+            size_t totalbytes = fileinfo.filesize;
+            size_t onread = 0;
+            char buffer[maxlen];
+            for(int i = 0;i < n;i++){
+                // 转发文件内容
+                onread = min(totalbytes,maxlen);
+                recv(clientfd,buffer,onread,0);
+                send(clientlist[message.dest],buffer,onread,0);
+                totalbytes -= onread;
+            }
+        }
+        
     }
 
     // 第6步：关闭socket，释放资源。

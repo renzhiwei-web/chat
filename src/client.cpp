@@ -11,6 +11,8 @@
 #include <sstream>
 #include <thread>
 #include "message.h"
+#include <sys/stat.h>
+#include <fstream>
 using namespace std;
 
 // 实现客户端之间的相互感知
@@ -18,6 +20,7 @@ vector<string> clientnames;
 
 // 多线程接收服务端的消息
 void receive(int socketfd);
+void send_file(int socketfd,Message& message);
 
 int main(int argc, char *argv[])
 {
@@ -133,6 +136,10 @@ int main(int argc, char *argv[])
             break;
         case 3:
             // TODO file
+            // 发送文件时，采用同步阻塞的方式
+            message.message_flag = 2;
+            strcpy(message.source,name.data());
+            send_file(sockfd,message);
             break;
         case 4:
             message.message_flag = 0;
@@ -183,8 +190,76 @@ void receive(int socketfd){
             for(auto it = clientnames.begin();it != clientnames.end();it++){
                 cout << *it << "\n";
             }
-        }else{ // 用户消息，则直接进行显示
+        }else if(message.message_flag == 1){ // 用户消息，则直接进行显示
             cout << "[" << message.source << "]:" << message.content << endl;
+        } else{ // 接收文件
+            istringstream iss(message.content);
+            st_fileinfo fileinfo;
+            int n = 0;
+            iss >> fileinfo.filename >> fileinfo.filesize >> n;
+            string filename = string("./file/") + fileinfo.filename;
+            ofstream fout(filename,ios::binary);
+            size_t totalbytes = fileinfo.filesize;
+            size_t onread = 0;
+            char buffer[maxlen];
+            for(int i = 0;i < n;i++){
+                onread = min(totalbytes,maxlen);
+                recv(socketfd,buffer,onread,0);
+                fout.write(buffer,onread);
+                totalbytes -= onread;
+            }
+            fout.close();
+            cout << "receive file completed\n";
         }
     }
+}
+
+void send_file(int socketfd,Message& message){
+    st_fileinfo fileinfo;
+
+    // 获得文件名
+    cout << "input filename\n";
+    cin >> fileinfo.filename;
+
+    // 获得文件大小
+    struct stat st;
+    stat(fileinfo.filename,&st);
+    fileinfo.filesize = st.st_size;
+
+    // 尝试打开文件
+    ifstream fin(fileinfo.filename,ios::binary);
+    if (fin.is_open() == false)
+    {
+        cout << "open file failed\n";
+        return;
+    }
+
+    // 准备消息体内容
+    message.message_flag = 2;
+    cout << "input name whose you want to send\n";
+    cin >> message.dest;
+
+    // 需要发送几次消息块
+    int n = (fileinfo.filesize - 1) / maxlen + 1;
+    // 序列化文件信息
+    ostringstream oss;
+    oss << fileinfo.filename << " " << fileinfo.filesize << " " << n;
+    strcpy(message.content,oss.str().data());
+
+    // 发现文件信息以及需要发送的次数
+    send(socketfd,&message,sizeof(message),0);
+
+    // 读取文件内容
+    size_t onread = 0;
+    size_t totalbytes = fileinfo.filesize;
+    char buffer[maxlen];
+
+    for(int i = 0;i < n;i++){
+        onread = min(totalbytes,maxlen);
+        fin.read(buffer,onread);
+        send(socketfd,buffer,onread,0);
+        totalbytes -= onread;
+    }
+    fin.close();
+    cout << "send completed\n";
 }
